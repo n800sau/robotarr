@@ -9,6 +9,7 @@ source vars.sh
 
 ./set_boot0_high_flash.py && \
 platformio run -e stm32 -t upload --upload-port $DEV &>upload.log && \
+#platformio run -e stm32 -t upload --upload-port $DEV && \
 ./set_boot0_low_run.py
 echo $?
 

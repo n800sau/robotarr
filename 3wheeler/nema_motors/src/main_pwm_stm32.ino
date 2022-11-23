@@ -1,3 +1,19 @@
+#include <SimpleSerialProtocol.h>
+
+// inintialize hardware constants
+const long BAUDRATE = 115200; // speed of serial connection
+const long CHARACTER_TIMEOUT = 500; // wait max 500 ms between single chars to be received
+
+// initialize command constants
+const byte COMMAND_MOVE = 'm';
+const byte COMMAND_STEPS = 's';
+
+// declare callbacks (this is boilerplate code but needed for proper compilation of the sketch)
+void onError(uint8_t errorNum);
+
+// Create instance. Pass Serial instance. Define command-id-range within Simple Serial Protocol is listening (here: a - z)
+SimpleSerialProtocol ssp(Serial, BAUDRATE, CHARACTER_TIMEOUT, onError, 'a', 'z'); // ASCII: 'a' - 'z' (26 byes of RAM is reserved)
+
 const int stepper1_enable_pin = PB7;
 const int stepper1_dir_pin = PA12;
 //const int stepper1_step_pin = PB1; //PA15;
@@ -20,7 +36,28 @@ const uint32_t freq_min = 800;
 HardwareTimer *t1;
 HardwareTimer *t2;
 
-HardwareTimer *t_begin(PinName pin, uint32_t perc)
+uint32_t last_freq_t1 = 0;
+uint32_t last_freq_t2 = 0;
+
+volatile bool last_fwd1 = true;
+volatile bool last_fwd2 = true;
+
+volatile int64_t counter1 = 0;
+volatile int64_t counter2 = 0;
+
+void periodCallback1()
+{
+//	counter1 += is_fwd1() ? 1 : -1;
+	counter1 += last_fwd1 ? 1 : -1;
+}
+
+void periodCallback2()
+{
+//	counter2 += is_fwd2() ? 1 : -1;
+	counter2 += last_fwd2 ? 1 : -1;
+}
+
+HardwareTimer *t_begin(PinName pin, uint32_t perc, callback_function_t periodCallback)
 {
   TIM_TypeDef *Instance = (TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM);
   HardwareTimer *HT = new HardwareTimer((TIM_TypeDef *)pinmap_peripheral(pin, PinMap_TIM));
@@ -28,27 +65,29 @@ HardwareTimer *t_begin(PinName pin, uint32_t perc)
   HT->setMode(channel, TIMER_OUTPUT_COMPARE_PWM1, pin);
   HT->setCaptureCompare(channel, perc, MICROSEC_COMPARE_FORMAT);
   HT->pause();
+//  auto period_callback = std::bind(&periodCallback, pcounter);
+  HT->attachInterrupt(periodCallback);
   return HT;
 }
 
 void setup()
 {
 
-	const PinName p1 = PB_1;
-	const PinName p2 = PB_8;
+//	const PinName p1 = PB_1;
+//	const PinName p2 = PB_8;
 
-	Serial.begin(115200);
-	Serial.println("Start");
+//	Serial.begin(115200);
+//	Serial.println("Start");
 
-	Serial.print("timer ");
-	Serial.print(get_timer_index((TIM_TypeDef *)pinmap_peripheral(p1, PinMap_TIM)));
-	Serial.print(", channel ");
-	Serial.print(STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(p1), PinMap_PWM)));
-	Serial.print(", timer ");
-	Serial.print(get_timer_index((TIM_TypeDef *)pinmap_peripheral(p2, PinMap_TIM)));
-	Serial.print(", channel ");
-	Serial.print(STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(p2), PinMap_PWM)));
-	Serial.println();
+//	Serial.print("timer ");
+//	Serial.print(get_timer_index((TIM_TypeDef *)pinmap_peripheral(p1, PinMap_TIM)));
+//	Serial.print(", channel ");
+//	Serial.print(STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(p1), PinMap_PWM)));
+//	Serial.print(", timer ");
+//	Serial.print(get_timer_index((TIM_TypeDef *)pinmap_peripheral(p2, PinMap_TIM)));
+//	Serial.print(", channel ");
+///	Serial.print(STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(p2), PinMap_PWM)));
+//	Serial.println();
 
 	pinMode(stepper1_enable_pin, OUTPUT);
 	digitalWrite(stepper1_enable_pin, LOW);
@@ -62,43 +101,74 @@ void setup()
 //	pinMode(stepper2_step_pin, OUTPUT);
 //	digitalWrite(stepper2_step_pin, LOW);
 
+	// init ssp. ssp is calling 'Serial.begin(9600)' behind the scenes
+	ssp.init();
+	// if message command with 'r' is received, the given callback will be called
+	ssp.registerCommand(COMMAND_MOVE, onMoveCmd);
+	ssp.registerCommand(COMMAND_STEPS, onStepsCmd);
+
 	set_dir(true, true);
 
-	t1 = t_begin(stepper1_step_pin, perc);
-	t2 = t_begin(stepper2_step_pin, perc);
+	t1 = t_begin(stepper1_step_pin, perc, periodCallback1);
+	t2 = t_begin(stepper2_step_pin, perc, periodCallback2);
 }
 
 void set_dir(bool fwd1, bool fwd2)
 {
+	last_fwd1 = fwd1;
+	last_fwd2 = fwd2;
 	digitalWrite(stepper1_dir_pin, fwd1 ? HIGH : LOW);
 	digitalWrite(stepper2_dir_pin, fwd2 ? LOW : HIGH);
 }
 
+bool is_fwd1()
+{
+	return digitalRead(stepper1_dir_pin) == HIGH;
+}
+
+bool is_fwd2()
+{
+	return digitalRead(stepper2_dir_pin) == LOW;
+}
+
+void change_freq_to(uint32_t to)
+{
+	change_freq(last_freq_t1, to);
+	change_freq(last_freq_t2, to);
+}
+
 void change_freq(uint32_t from, uint32_t to)
 {
-	if(from != to)
+	if(from < to)
 	{
 		uint32_t step = 100;
 		uint32_t sig = from > to ? -1 : 1;
-		Serial.print("From ");
-		Serial.print(from);
-		Serial.print(" To ");
-		Serial.println(to);
+//		Serial.print("From ");
+//		Serial.print(from);
+//		Serial.print(" To ");
+//		Serial.println(to);
 		for(uint32_t freq=from; freq*sig<=to*sig; freq+=step*sig) {
-			Serial.print("Freq ");
-			Serial.println(freq);
+//			Serial.print("Freq ");
+//			Serial.println(freq);
 			t1->setOverflow(freq, HERTZ_FORMAT);
 			t2->setOverflow(freq, HERTZ_FORMAT);
 			t1->resume();
 			t2->resume();
 			delay(10);
 		}
+	} else {
+		t1->setOverflow(to, HERTZ_FORMAT);
+		t2->setOverflow(to, HERTZ_FORMAT);
+		t1->resume();
+		t2->resume();
 	}
+	last_freq_t1 = to;
+	last_freq_t2 = to;
 }
 
 void loop()
 {
-	change_freq(freq_min, freq_max);
+/*	change_freq(freq_min, freq_max);
 	delay(2000);
 	t1->pause();
 	t2->pause();
@@ -110,4 +180,57 @@ void loop()
 	t2->pause();
 	delay(4000);
 	set_dir(true, true);
+*/	ssp.loop();
+}
+
+// callbacks implementation
+void onMoveCmd()
+{
+	int s1val = ssp.readInt32();
+	int s2val = ssp.readInt32();
+	ssp.readEot(); // read and expect the end-of-transmission byte. important, don't forget!
+
+	//
+	// Immediately send back all received and interpreted values
+	//
+	ssp.writeCommand(COMMAND_MOVE); // start command with command id
+
+	ssp.writeInt32(s1val);
+	ssp.writeInt32(s2val);
+
+	ssp.writeEot(); // end command with end-of-transmission byte. important, don't forget!
+
+	t1->pause();
+	t2->pause();
+	set_dir(s1val >= 0, s2val >= 0);
+	if(s1val != 0)
+	{
+		t1->setOverflow(abs(s1val), HERTZ_FORMAT);
+		t1->resume();
+	}
+	if(s2val != 0)
+	{
+		t2->setOverflow(abs(s2val), HERTZ_FORMAT);
+		t2->resume();
+	}
+
+}
+
+// callbacks implementation
+void onStepsCmd()
+{
+	ssp.readEot();
+
+	ssp.writeCommand(COMMAND_STEPS); // start command with command id
+
+	ssp.writeInt32(counter1);
+	ssp.writeInt32(counter2);
+
+	ssp.writeEot(); // end command with end-of-transmission byte. important, don't forget!
+
+
+}
+
+void onError(uint8_t errorNum) {
+  digitalWrite(LED_BUILTIN, HIGH);
 }
