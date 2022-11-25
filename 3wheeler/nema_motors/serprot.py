@@ -79,11 +79,11 @@ def print_counts(dt):
 
 with serial.Serial(DEV, 115200, timeout=0.5) as ser:
 
-	set_speed(ser, -0.01, 0.01)
-	print_counts(2)
+	set_speed(ser, 0.1, 0.1)
+	print_counts(1)
 	set_speed(ser, 0, 0)
-	set_speed(ser, 0.01, -0.01)
-	print_counts(2)
+	set_speed(ser, -0.1, -0.1)
+	print_counts(1)
 	set_speed(ser, 0, 0)
 #	move(ser, True)
 #	print_steps()
