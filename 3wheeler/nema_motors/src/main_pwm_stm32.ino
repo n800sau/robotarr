@@ -5,8 +5,9 @@ const long BAUDRATE = 115200; // speed of serial connection
 const long CHARACTER_TIMEOUT = 500; // wait max 500 ms between single chars to be received
 
 // initialize command constants
-const byte COMMAND_MOVE = 'm';
-const byte COMMAND_STEPS = 's';
+const byte CMD_MOVE = 'm';
+const byte CMD_STEPS = 's';
+const byte CMD_RESET = 'r';
 
 // declare callbacks (this is boilerplate code but needed for proper compilation of the sketch)
 void onError(uint8_t errorNum);
@@ -104,8 +105,9 @@ void setup()
 	// init ssp. ssp is calling 'Serial.begin(9600)' behind the scenes
 	ssp.init();
 	// if message command with 'r' is received, the given callback will be called
-	ssp.registerCommand(COMMAND_MOVE, onMoveCmd);
-	ssp.registerCommand(COMMAND_STEPS, onStepsCmd);
+	ssp.registerCommand(CMD_MOVE, onMoveCmd);
+	ssp.registerCommand(CMD_STEPS, onStepsCmd);
+	ssp.registerCommand(CMD_RESET, onResetCmd);
 
 	set_dir(true, true);
 
@@ -193,7 +195,7 @@ void onMoveCmd()
 	//
 	// Immediately send back all received and interpreted values
 	//
-	ssp.writeCommand(COMMAND_MOVE); // start command with command id
+	ssp.writeCommand(CMD_MOVE); // start command with command id
 
 	ssp.writeInt32(s1val);
 	ssp.writeInt32(s2val);
@@ -221,14 +223,21 @@ void onStepsCmd()
 {
 	ssp.readEot();
 
-	ssp.writeCommand(COMMAND_STEPS); // start command with command id
+	ssp.writeCommand(CMD_STEPS); // start command with command id
 
-	ssp.writeInt32(counter1);
-	ssp.writeInt32(counter2);
+	ssp.writeInt64(counter1);
+	ssp.writeInt64(counter2);
 
 	ssp.writeEot(); // end command with end-of-transmission byte. important, don't forget!
 
 
+}
+
+void onResetCmd()
+{
+	counter1 = 0;
+	counter2 = 0;
+	ssp.readEot();
 }
 
 void onError(uint8_t errorNum) {
