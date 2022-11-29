@@ -14,6 +14,7 @@ def main(args=None):
 	node = rclpy.create_node('vel_publisher')
 	publisher = node.create_publisher(TwistStamped, 'cmd_vel', qos_profile_system_default)
 
+	r = node.create_rate(1)  # 1hz // the second spin_once makes that delay
 	for l,a in ((0., 0.), (0.5, 1.), (-0.5, 1.), (0., 0.)):
 		msg = TwistStamped()
 		msg.header.stamp = node.get_clock().now().to_msg()
@@ -21,7 +22,7 @@ def main(args=None):
 		msg.twist.angular.z = a
 		publisher.publish(msg)
 		rclpy.spin_once(node, timeout_sec=0.1)
-		time.sleep(1)
+		rclpy.spin_once(node)
 
 	node.destroy_node()
 	rclpy.shutdown()
