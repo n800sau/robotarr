@@ -24,7 +24,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'wheeler_3 = wheeler_3.wheeler_3:main'
+            'wheeler_3 = wheeler_3.wheeler_3:main',
+            'wheeler_streamer_3 = wheeler_3.streamer3:main'
         ],
     },
 )

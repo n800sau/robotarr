@@ -32,5 +32,10 @@ def generate_launch_description():
 			package='wheeler_3',
 			executable='wheeler_3',
 			name='wheeler_3'
+		),
+		Node(
+			package='wheeler_3',
+			executable='wheeler_streamer_3',
+			name='wheeler_streamer_3'
 		)
 	])
