@@ -5,6 +5,7 @@ const long BAUDRATE = 115200; // speed of serial connection
 const long CHARACTER_TIMEOUT = 500; // wait max 500 ms between single chars to be received
 
 // initialize command constants
+const byte CMD_PING = 'p';
 const byte CMD_MOVE = 'm';
 const byte CMD_STEPS = 's';
 const byte CMD_RESET = 'r';
@@ -108,6 +109,7 @@ void setup()
 	ssp.registerCommand(CMD_MOVE, onMoveCmd);
 	ssp.registerCommand(CMD_STEPS, onStepsCmd);
 	ssp.registerCommand(CMD_RESET, onResetCmd);
+	ssp.registerCommand(CMD_PING, onPingCmd);
 
 	set_dir(true, true);
 
@@ -223,12 +225,12 @@ void onStepsCmd()
 {
 	ssp.readEot();
 
-	ssp.writeCommand(CMD_STEPS); // start command with command id
+	ssp.writeCommand(CMD_STEPS);
 
 	ssp.writeInt64(counter1);
 	ssp.writeInt64(counter2);
 
-	ssp.writeEot(); // end command with end-of-transmission byte. important, don't forget!
+	ssp.writeEot();
 
 
 }
@@ -238,6 +240,17 @@ void onResetCmd()
 	counter1 = 0;
 	counter2 = 0;
 	ssp.readEot();
+}
+
+void onPingCmd()
+{
+	char ping_char = ssp.readChar();
+	ssp.readEot();
+	if(ping_char == 'A') {
+		ssp.writeCommand(CMD_PING);
+		ssp.writeChar('B');
+		ssp.writeEot();
+	}
 }
 
 void onError(uint8_t errorNum) {

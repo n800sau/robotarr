@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import serial, time, struct, math
+import serial, time, struct, math, os
+from serial.tools import list_ports
 
 import rclpy
 from rclpy.node import Node
@@ -10,8 +11,6 @@ from nav_msgs.msg import Odometry
 import tf2_py as tf2
 import tf2_ros
 import numpy as np
-
-exec(open('vars.sh').read())
 
 CHAR_EOT = b'\x0a'
 CMD_MOVE = b'm'
@@ -30,6 +29,19 @@ WDIAM = 0.06
 
 steps1 = 0
 steps2 = 0
+
+def find_hw():
+	rs = None
+	for s in list_ports.comports(include_links=False):
+		with serial.Serial(s.device, baudrate=115200, timeout=1) as ser:
+			ser.write(b'pA\x0a')
+			cmd = ser.read(1)
+			if cmd == b'p':
+				if ser.read(1) == b'B':
+					rs = s.device
+					ser.read(1)
+					break
+	return rs
 
 def protocol_error():
 	raise Exception('protocol error')
@@ -110,8 +122,9 @@ def m2steps(mval):
 
 class TheNode(Node):
 
-	def __init__(self):
-		super().__init__('minimal_subscriber')
+	def __init__(self, ser):
+		super().__init__('wheeler_3')
+		self.ser = ser
 		self.prev_time = self.get_clock().now()
 		self.theta = 0.
 		self.prev_counter1 = 0
@@ -142,8 +155,7 @@ class TheNode(Node):
 		linear_right = lin_vel_x + ((ang_vel * WHEEL_BASE) / 2.0);
 		linear_left = (2.0 * lin_vel_x) - linear_right;
 		self.get_logger().info('vel: l %s, r %s' % (linear_left, linear_right))
-		with serial.Serial(DEV, 115200, timeout=0.5) as ser:
-			set_speed(ser, linear_left, linear_right)
+		set_speed(self.ser, linear_left, linear_right)
 
 	def counts2tf(self, counter1, counter2):
 		curr_time = self.get_clock().now()
@@ -228,12 +240,20 @@ class TheNode(Node):
 		self.prev_counter2 = curr_counter2
 
 def main(args=None):
+
 	rclpy.init(args=args)
 
-	node = TheNode()
+	if os.path.exists('vars.sh'):
+		exec(open('vars.sh').read())
+	else:
+		DEV = find_hw()
+
 
 	exit = False
 	with serial.Serial(DEV, 115200, timeout=0.5) as ser:
+
+		node = TheNode(ser)
+		node.get_logger().info('Dev: {}'.format(DEV))
 
 		reset_steps(ser)
 		while not exit:

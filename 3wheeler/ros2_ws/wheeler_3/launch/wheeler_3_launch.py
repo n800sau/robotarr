@@ -8,25 +8,25 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-	param_file_name = 'wheeler_3.yaml'
-	param_dir = LaunchConfiguration(
-		'params',
-		default=os.path.join(
-			get_package_share_directory('wheeler_3'),
-			'param',
-			param_file_name))
-	launch_file_dir = os.path.join(get_package_share_directory('wheeler_3'))
+#	param_file_name = 'wheeler_3.yaml'
+#	param_dir = LaunchConfiguration(
+#		'params',
+#		default=os.path.join(
+#			get_package_share_directory('wheeler_3'),
+#			'param',
+#			param_file_name))
+#	launch_file_dir = os.path.join(get_package_share_directory('wheeler_3'))
 	return LaunchDescription([
-		DeclareLaunchArgument(
-			'params',
-			default_value=param_dir,
-			description='Full path to param file to load'),
+#		DeclareLaunchArgument(
+#			'params',
+#			default_value=param_dir,
+#			description='Full path to param file to load'),
 
-		IncludeLaunchDescription(
-			PythonLaunchDescriptionSource([launch_file_dir, '/wheeler_3_launch.py']),
-			launch_arguments={
-				'params': param_dir}.items(),
-		),
+#		IncludeLaunchDescription(
+#			PythonLaunchDescriptionSource([launch_file_dir, '/wheeler_3_launch.py']),
+#			launch_arguments={
+#				'params': param_dir}.items(),
+#		),
 
 		Node(
 			package='wheeler_3',
