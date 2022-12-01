@@ -1,0 +1,13 @@
+[Unit]
+Description=fastdds discovery server
+After=syslog.target network.target
+[Service]
+Type=simple
+#EnvironmentFile=/opt/ros/humble/setup.bash
+ExecStart=/bin/bash /home/n800s/work/robotarr/dds/run_discovery_server.sh
+User=n800s
+Group=n800s
+RestartSec=5s
+Restart=always
+[Install]
+WantedBy=multi-user.target
