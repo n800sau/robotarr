@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <dds>
     <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
-        <participant profile_name="super_client_profile" is_default_profile="true">
+       <participant profile_name="super_client_profile" is_default_profile="true">
             <rtps>
                 <builtin>
+                    <metatrafficUnicastLocatorList>
+                        <locator>
+                            <udpv4>
+                                <address>192.168.1.50</address>
+                                <port>7412</port>
+                            </udpv4>
+                        </locator>
+                        <locator>
+                            <udpv4>
+                                <address>192.168.1.5</address>
+                                <port>7412</port>
+                            </udpv4>
+                        </locator>
+                        <locator>
+                            <udpv4>
+                                <address>192.168.1.59</address>
+                            <port>7412</port>
+                            </udpv4>
+                        </locator>
+                    </metatrafficUnicastLocatorList>
                     <discovery_config>
                         <discoveryProtocol>SUPER_CLIENT</discoveryProtocol>
+                        <clientAnnouncementPeriod>
+                            <!-- change default to 250 ms -->
+                            <nanosec>500000000</nanosec>
+                        </clientAnnouncementPeriod>
                         <discoveryServersList>
                             <RemoteServer prefix="44.53.00.5f.45.50.52.4f.53.49.4d.41">
                                 <metatrafficUnicastLocatorList>
