@@ -1,4 +1,4 @@
-FROM ros:noetic
+FROM ros:noetic-ros-base-focal
 WORKDIR /home/n800s/ros1_ws
 RUN useradd -ms /bin/bash -u 1100 n800s
 RUN apt-get update
