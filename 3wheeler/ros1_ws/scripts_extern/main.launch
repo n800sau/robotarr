@@ -1,0 +1,14 @@
+<launch>
+
+	<node name="master_sync_gate" pkg="fkie_master_sync" type="master_sync">
+	</node>
+	<node name="master_discovery_gate" pkg="fkie_master_discovery" type="master_discovery">
+		<rosparam param="robot_hosts">[192.168.1.59]</rosparam>
+	</node>
+
+	<node name="wheeler_3_sub" pkg="wheeler_3_extern" type="sub.py" output="screen">
+	</node>
+
+</launch>
+
+
