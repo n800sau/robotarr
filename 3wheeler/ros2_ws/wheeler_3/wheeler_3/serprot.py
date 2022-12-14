@@ -20,9 +20,6 @@ RSTEPS = 200*16
 # diameter in m
 WDIAM = 0.06
 
-steps1 = 0
-steps2 = 0
-
 BAUD = 9600
 
 def find_hw():
@@ -38,6 +35,21 @@ def find_hw():
 					ser.read(1)
 					break
 	return rs
+
+def init_serial_dev():
+	reset_stm32()
+	time.sleep(3)
+
+	if os.path.exists('vars.sh'):
+		exec(open('vars.sh').read())
+	else:
+		DEV = find_hw()
+
+	print('DEV', DEV)
+	if DEV is None:
+		raise Exception('Port not found')
+
+	return serial.Serial(DEV, baudrate=BAUD, timeout=1)
 
 def protocol_error():
 	raise Exception('protocol error')
@@ -70,92 +82,82 @@ def vel2freq(mval):
 	circumference = WDIAM * math.pi
 	return int(mval/circumference * RSTEPS)
 
-def set_speed(ser, v1, v2):
-	freq1 = vel2freq(v1)
-	freq2 = vel2freq(v2)
-#	print('FREQ', freq1, freq2)
-	ser.write(CMD_MOVE)
-	ser.write(struct.pack('i', freq1))
-	ser.write(struct.pack('i', freq2))
-	ser.write(CHAR_EOT)
-	if ser.read(1) == CMD_MOVE:
-		print('V1', struct.unpack('i', ser.read(4))[0])
-		print('V2', struct.unpack('i', ser.read(4))[0])
-		if ser.read(1) != CHAR_EOT:
-			protocol_error()
-	else:
-		protocol_error()
-
-def steps(ser):
-	global steps1, steps2
-	ser.write(CMD_STEPS)
-	ser.write(CHAR_EOT)
-	if ser.read(1) == CMD_STEPS:
-		v1 = struct.unpack('q', ser.read(8))[0]
-		v2 = struct.unpack('q', ser.read(8))[0]
-		if ser.read(1) != CHAR_EOT:
-			protocol_error()
-		dv1 = v1 - steps1
-		dv2 = v2 - steps2
-		steps1 = v1
-		steps2 = v2
-#		print('dS1', dv1)
-#		print('dS2', dv2)
-		rs = (v1, v2)
-	else:
-		protocol_error()
-	return rs
-
-def reset_steps(ser):
-	ser.write(CMD_RESET)
-	ser.write(CHAR_EOT)
-	steps1 = 0
-	steps2 = 0
-
 def m2steps(mval):
 	circumference = WHEEL_DIAM * math.pi
 	return int(RSTEPS * mval / circumference)
 
-def init_serial_dev():
-	reset_stm32()
-	time.sleep(1)
+class WheelerSerial:
 
-	if os.path.exists('vars.sh'):
-		exec(open('vars.sh').read())
-	else:
-		DEV = find_hw()
+	def __init__(self, ser=None):
+		if ser is None:
+			ser = init_serial_dev()
+		self.ser = ser
+		self.reset_steps()
 
-	print('DEV', DEV)
-	if DEV is None:
-		raise Exception('Port not found')
+	def set_speed(self, v1, v2):
+		freq1 = vel2freq(v1)
+		freq2 = vel2freq(v2)
+#		print('FREQ', freq1, freq2)
+		self.ser.write(CMD_MOVE)
+		self.ser.write(struct.pack('i', freq1))
+		self.ser.write(struct.pack('i', freq2))
+		self.ser.write(CHAR_EOT)
+		if self.ser.read(1) == CMD_MOVE:
+			v1,v2 = struct.unpack('ii', self.ser.read(8))
+			if self.ser.read(1) != CHAR_EOT:
+				protocol_error()
+		else:
+			protocol_error()
+		return v1,v2
 
-	return serial.Serial(DEV, baudrate=BAUD, timeout=1)
+	def steps(self):
+		self.ser.write(CMD_STEPS)
+		self.ser.write(CHAR_EOT)
+		if self.ser.read(1) == CMD_STEPS:
+			v1 = struct.unpack('q', self.ser.read(8))[0]
+			v2 = struct.unpack('q', self.ser.read(8))[0]
+			if self.ser.read(1) != CHAR_EOT:
+				protocol_error()
+			dv1 = v1 - self.steps1
+			dv2 = v2 - self.steps2
+			self.steps1 = v1
+			self.steps2 = v2
+			rs = (v1, v2)
+		else:
+			protocol_error()
+		return rs
+
+	def reset_steps(self):
+		self.ser.write(CMD_RESET)
+		self.ser.write(CHAR_EOT)
+		self.steps1 = 0
+		self.steps2 = 0
 
 if __name__ == '__main__':
 
 	def print_steps():
 		while True:
-			v = steps(ser)
+			v = wheeler.steps()
 			if v == 0:
 				break
 
 	def print_counts(dt):
 		t = time.time()
 		while time.time() - t < dt:
-			print(steps(ser))
+			print(wheeler.steps())
 
 	ser = init_serial_dev()
 
 	try:
-		reset_steps(ser)
+		wheeler = WheelerSerial(ser)
 
 		for i in range(3):
-			set_speed(ser, 0.1, 0.1)
+			wheeler.set_speed(0.1, 0.1)
 			print_counts(1)
-			set_speed(ser, 0, 0)
+			wheeler.set_speed(0, 0)
 			print_counts(1)
-			set_speed(ser, -0.1, -0.1)
+			wheeler.set_speed(-0.1, -0.1)
 			print_counts(1)
-			set_speed(ser, 0, 0)
+			wheeler.set_speed(0, 0)
 	finally:
 		ser.close()
