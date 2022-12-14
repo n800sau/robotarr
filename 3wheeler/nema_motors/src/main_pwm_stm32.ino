@@ -1,7 +1,7 @@
 #include <SimpleSerialProtocol.h>
 
 // inintialize hardware constants
-const long BAUDRATE = 115200; // speed of serial connection
+const long BAUDRATE = 9600; // speed of serial connection
 const long CHARACTER_TIMEOUT = 500; // wait max 500 ms between single chars to be received
 
 // initialize command constants

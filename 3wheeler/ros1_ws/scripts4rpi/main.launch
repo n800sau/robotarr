@@ -1,14 +1,29 @@
 <launch>
 
+	<!-- use_sim_time set to false for wheeler_3 to work -->
+	<param name="/use_sim_time" value="false" />
+
 	<node name="master_sync_gate" pkg="fkie_master_sync" type="master_sync">
 	</node>
 	<node name="master_discovery_gate" pkg="fkie_master_discovery" type="master_discovery">
 		<rosparam param="robot_hosts">[192.168.1.50]</rosparam>
 	</node>
 
-	<node name="wheeler_3_pub" pkg="wheeler_3" type="pub.py" output="screen">
+<!--
+	<node name="wheeler_3" pkg="wheeler_3" type="wheeler_3.py" output="screen">
+		<param name="serial_dev" value="/dev/ttyAMA0" />
 	</node>
+-->
 
 	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+
+	<!-- fixed transform -->
+	<node pkg="tf" type="static_transform_publisher" name="lidar_fixed_publisher" args="0 0 10 0 0 0 laser_frame odom 100">
+	</node>
+<!--
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+		<param name="use_tf_static" value="true" />
+	</node>
+-->
 
 </launch>
