@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import serial, time, struct, math
 
@@ -7,19 +7,60 @@ exec(open('vars.sh').read())
 CHAR_EOT = b'\x0a'
 CMD_MOVE = b'm'
 CMD_STEPS = b's'
+CMD_RESET = b'r'
 
 # distance between centers of wheels
-WHEEL_DIST = 0.176
+WHEEL_BASE = 0.176
 # full turn distance
-FULL_TURN_DIST = WHEEL_DIST * math.pi
+FULL_TURN_DIST = WHEEL_BASE * math.pi
 
-# steps per circumference
+# steps per revolation
 RSTEPS = 200*16
 # diameter in m
 WDIAM = 0.06
 
+steps1 = 0
+steps2 = 0
+
+def find_hw():
+	rs = None
+	for s in list_ports.comports(include_links=False):
+		with serial.Serial(s.device, baudrate=115200, timeout=1) as ser:
+			ser.write(b'pA\x0a')
+			cmd = ser.read(1)
+			if cmd == b'p':
+				if ser.read(1) == b'B':
+					rs = s.device
+					ser.read(1)
+					break
+	return rs
+
 def protocol_error():
 	raise Exception('protocol error')
+
+def quaternion_from_euler(ai, aj, ak):
+	ai /= 2.0
+	aj /= 2.0
+	ak /= 2.0
+	ci = math.cos(ai)
+	si = math.sin(ai)
+	cj = math.cos(aj)
+	sj = math.sin(aj)
+	ck = math.cos(ak)
+	sk = math.sin(ak)
+	cc = ci*ck
+	cs = ci*sk
+	sc = si*ck
+	ss = si*sk
+
+	q = np.empty((4, ))
+	q[0] = cj*sc - sj*cs
+	q[1] = cj*ss + sj*cc
+	q[2] = cj*cs - sj*sc
+	q[3] = cj*cc + sj*ss
+
+	return q
+
 
 def vel2freq(mval):
 	circumference = WDIAM * math.pi
@@ -42,39 +83,58 @@ def set_speed(ser, v1, v2):
 		protocol_error()
 
 def steps(ser):
+	global steps1, steps2
 	ser.write(CMD_STEPS)
 	ser.write(CHAR_EOT)
-
 	if ser.read(1) == CMD_STEPS:
-		v1 = struct.unpack('i', ser.read(4))[0]
-		v2 = struct.unpack('i', ser.read(4))[0]
+		v1 = struct.unpack('q', ser.read(8))[0]
+		v2 = struct.unpack('q', ser.read(8))[0]
 		if ser.read(1) != CHAR_EOT:
 			protocol_error()
-		print('S1', v1)
-		print('S2', v2)
-		rs = v1+v2
+		dv1 = v1 - steps1
+		dv2 = v2 - steps2
+		steps1 = v1
+		steps2 = v2
+#		print('dS1', dv1)
+#		print('dS2', dv2)
+		rs = (v1, v2)
 	else:
 		protocol_error()
 	return rs
 
-def print_steps():
-	while True:
-		v = steps(ser)
-		if v == 0:
-			break
+def reset_steps(ser):
+	ser.write(CMD_RESET)
+	ser.write(CHAR_EOT)
+	steps1 = 0
+	steps2 = 0
 
-def print_counts(dt):
-	t = time.time()
-	while time.time() - t < dt:
-		steps(ser)
+def m2steps(mval):
+	circumference = WHEEL_DIAM * math.pi
+	return int(RSTEPS * mval / circumference)
 
-with serial.Serial(DEV, 115200, timeout=0.5) as ser:
+if __name__ == '__main__':
 
-	set_speed(ser, 0.1, 0.1)
-	print_counts(1)
-	set_speed(ser, 0, 0)
-	set_speed(ser, -0.1, -0.1)
-	print_counts(1)
-	set_speed(ser, 0, 0)
+	def print_steps():
+		while True:
+			v = steps(ser)
+			if v == 0:
+				break
 
-	ser.close()
+	def print_counts(dt):
+		t = time.time()
+		while time.time() - t < dt:
+			print(steps(ser))
+
+	with serial.Serial(DEV, 9600, timeout=0.5) as ser:
+
+		reset_steps(ser)
+
+		for i in range(3):
+			set_speed(ser, 0.1, 0.1)
+			print_counts(1)
+			set_speed(ser, 0, 0)
+			print_counts(1)
+			set_speed(ser, -0.1, -0.1)
+			print_counts(1)
+			set_speed(ser, 0, 0)
+
