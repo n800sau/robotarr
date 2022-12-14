@@ -3,14 +3,14 @@
 import serial, time, struct, math, os
 from serial.tools import list_ports
 
-from reset import reset_stm32
+from wheeler_3.reset import reset_stm32
+from wheeler_3.wheeler_3_common import *
 
 CHAR_EOT = b'\x0a'
 CMD_MOVE = b'm'
 CMD_STEPS = b's'
 CMD_RESET = b'r'
 
-from wheeler_3_common import *
 
 BAUD = 9600
 

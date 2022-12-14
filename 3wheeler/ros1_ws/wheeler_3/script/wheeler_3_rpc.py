@@ -50,7 +50,7 @@ class TheNode:
 		linear_right = lin_vel_x + ((ang_vel * WHEEL_BASE) / 2.0);
 		linear_left = (2.0 * lin_vel_x) - linear_right;
 		rospy.loginfo('vel: l %s, r %s' % (linear_left, linear_right))
-		self.w.set_speed(linear_left, linear_right)
+		self.w.set_speed(v1=linear_left, v2=linear_right)
 
 	def counts2tf(self):
 		counter1,counter2 = self.w.steps()

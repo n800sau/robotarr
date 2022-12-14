@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import time
-from reset import reset_stm32
+from wheeler_3.reset import reset_stm32
 from serprot import find_hw
 
 reset_stm32()
