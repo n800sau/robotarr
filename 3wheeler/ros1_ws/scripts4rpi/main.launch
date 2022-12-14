@@ -15,6 +15,9 @@
 	</node>
 -->
 
+	<node name="wheeler_3" pkg="wheeler_3" type="wheeler_3_rpc.py" output="screen">
+	</node>
+
 	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
 
 	<!-- fixed transform -->
