@@ -10,12 +10,16 @@ import tf2_py as tf2
 import tf2_ros
 import numpy as np
 
-from client_rpc import Wheeler
+from wheeler_3.wheeler_3_common import *
+
+from wheeler_3.client_rpc import Wheeler
+
+HOST, PORT = "localhost", 9999
 
 class TheNode:
 
 	def __init__(self):
-		self.w = Wheeler()
+		self.w = Wheeler(HOST, PORT)
 		self.prev_time = rospy.Time.now()
 		self.theta = 0.
 		self.prev_counter1 = 0
@@ -48,8 +52,8 @@ class TheNode:
 		rospy.loginfo('vel: l %s, r %s' % (linear_left, linear_right))
 		self.w.set_speed(linear_left, linear_right)
 
-	def counts2tf(self, counter1, counter2):
-		counter1,counter2 = w.steps()
+	def counts2tf(self):
+		counter1,counter2 = self.w.steps()
 		# set use_sim_time to false for now to work
 		curr_time = rospy.Time.now()
 		dt = curr_time - self.prev_time
@@ -140,7 +144,7 @@ def main(args=None):
 	node = TheNode()
 	rate = rospy.Rate(10) # 10hz
 	while not rospy.is_shutdown():
-		node.counts2tf(counter1, counter2)
+		node.counts2tf()
 		rate.sleep()
 
 if __name__ == '__main__':
