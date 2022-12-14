@@ -25,7 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             'wheeler_3 = wheeler_3.wheeler_3:main',
-            'wheeler_streamer_3 = wheeler_3.streamer3:main'
+            'wheeler_streamer_3 = wheeler_3.streamer3:main',
+            'teleop_keyboard = wheeler_3.teleop_keyboard:main',
         ],
     },
 )

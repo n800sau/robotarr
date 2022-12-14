@@ -13,7 +13,7 @@ def rpc_request(method_name, **params):
 		"jsonrpc": "2.0",
 		'params': params
 	})
-	print('request', data)
+#	print('request', data)
 	# Create a socket (SOCK_STREAM means a TCP socket)
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 		sock.connect((HOST, PORT))
@@ -27,10 +27,10 @@ def print_counts(dt):
 		print(rpc_request('steps'))
 
 for i in range(3):
-	rpc_request('set_speed', v1=0.1, v2 = 0.1)
+	print('SS', rpc_request('set_speed', v1=0.1, v2 = 0.1))
 	print_counts(1)
-	rpc_request('set_speed', v1 = 0, v2 = 0)
+	print('SS', rpc_request('set_speed', v1 = 0, v2 = 0))
 	print_counts(1)
-	rpc_request('set_speed', v1 = -0.1, v2 = -0.1)
+	print('SS', rpc_request('set_speed', v1 = -0.1, v2 = -0.1))
 	print_counts(1)
-	rpc_request('set_speed', v1 = 0, v2 = 0)
+	print('SS', rpc_request('set_speed', v1 = 0, v2 = 0))

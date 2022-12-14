@@ -88,35 +88,40 @@ def m2steps(mval):
 
 class WheelerSerial:
 
-	def __init__(self, ser=None):
-		if ser is None:
-			ser = init_serial_dev()
+	def __init__(self, ser = None):
 		self.ser = ser
 		self.reset_steps()
+
+	def ser_dev(self):
+		if self.ser is None:
+			self.ser = init_serial_dev()
+		elif not self.ser.is_open:
+			self.ser.open()
+		return self.ser
 
 	def set_speed(self, v1, v2):
 		freq1 = vel2freq(v1)
 		freq2 = vel2freq(v2)
 #		print('FREQ', freq1, freq2)
-		self.ser.write(CMD_MOVE)
-		self.ser.write(struct.pack('i', freq1))
-		self.ser.write(struct.pack('i', freq2))
-		self.ser.write(CHAR_EOT)
-		if self.ser.read(1) == CMD_MOVE:
-			v1,v2 = struct.unpack('ii', self.ser.read(8))
-			if self.ser.read(1) != CHAR_EOT:
+		self.ser_dev().write(CMD_MOVE)
+		self.ser_dev().write(struct.pack('i', freq1))
+		self.ser_dev().write(struct.pack('i', freq2))
+		self.ser_dev().write(CHAR_EOT)
+		if self.ser_dev().read(1) == CMD_MOVE:
+			v1,v2 = struct.unpack('ii', self.ser_dev().read(8))
+			if self.ser_dev().read(1) != CHAR_EOT:
 				protocol_error()
 		else:
 			protocol_error()
 		return v1,v2
 
 	def steps(self):
-		self.ser.write(CMD_STEPS)
-		self.ser.write(CHAR_EOT)
-		if self.ser.read(1) == CMD_STEPS:
-			v1 = struct.unpack('q', self.ser.read(8))[0]
-			v2 = struct.unpack('q', self.ser.read(8))[0]
-			if self.ser.read(1) != CHAR_EOT:
+		self.ser_dev().write(CMD_STEPS)
+		self.ser_dev().write(CHAR_EOT)
+		if self.ser_dev().read(1) == CMD_STEPS:
+			v1 = struct.unpack('q', self.ser_dev().read(8))[0]
+			v2 = struct.unpack('q', self.ser_dev().read(8))[0]
+			if self.ser_dev().read(1) != CHAR_EOT:
 				protocol_error()
 			dv1 = v1 - self.steps1
 			dv2 = v2 - self.steps2
@@ -128,8 +133,8 @@ class WheelerSerial:
 		return rs
 
 	def reset_steps(self):
-		self.ser.write(CMD_RESET)
-		self.ser.write(CHAR_EOT)
+		self.ser_dev().write(CMD_RESET)
+		self.ser_dev().write(CHAR_EOT)
 		self.steps1 = 0
 		self.steps2 = 0
 
