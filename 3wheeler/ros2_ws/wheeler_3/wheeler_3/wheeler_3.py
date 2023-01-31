@@ -33,7 +33,7 @@ steps2 = 0
 def find_hw():
 	rs = None
 	for s in list_ports.comports(include_links=False):
-		with serial.Serial(s.device, baudrate=115200, timeout=1) as ser:
+		with serial.Serial(s.device, baudrate=9600, timeout=1) as ser:
 			ser.write(b'pA\x0a')
 			cmd = ser.read(1)
 			if cmd == b'p':
@@ -244,10 +244,10 @@ def main(args=None):
 	rclpy.init(args=args)
 
 	if os.path.exists('vars.sh'):
-		exec(open('vars.sh').read())
+		global DEV
+		exec(open('vars.sh').read(), globals())
 	else:
 		DEV = find_hw()
-
 
 	exit = False
 	with serial.Serial(DEV, 115200, timeout=0.5) as ser:
