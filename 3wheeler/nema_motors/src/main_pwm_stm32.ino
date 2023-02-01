@@ -2,7 +2,7 @@
 
 // inintialize hardware constants
 const long BAUDRATE = 9600; // speed of serial connection
-const long CHARACTER_TIMEOUT = 500; // wait max 500 ms between single chars to be received
+const long CHARACTER_TIMEOUT = 200; // wait max 500 ms between single chars to be received
 
 // initialize command constants
 const byte CMD_PING = 'p';
@@ -240,6 +240,8 @@ void onResetCmd()
 	counter1 = 0;
 	counter2 = 0;
 	ssp.readEot();
+	ssp.writeCommand(CMD_RESET);
+	ssp.writeEot();
 }
 
 void onPingCmd()

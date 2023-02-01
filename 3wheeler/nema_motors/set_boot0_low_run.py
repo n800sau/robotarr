@@ -22,4 +22,4 @@ GPIO.output(RESET_PIN, 0)
 time.sleep(0.2)
 GPIO.output(RESET_PIN, 1)
 
-print('Finished')
+print('LM Finished')
