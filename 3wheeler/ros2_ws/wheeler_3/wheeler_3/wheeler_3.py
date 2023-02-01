@@ -12,6 +12,9 @@ import tf2_py as tf2
 import tf2_ros
 import numpy as np
 
+import time
+import RPi.GPIO as GPIO
+
 CHAR_EOT = b'\x0a'
 CMD_MOVE = b'm'
 CMD_STEPS = b's'
@@ -30,21 +33,40 @@ WDIAM = 0.06
 steps1 = 0
 steps2 = 0
 
+def reset_port():
+
+	RESET_PIN = 12
+
+	# or, for pin numbering, choose BOARD
+	GPIO.setmode(GPIO.BOARD)
+
+	GPIO.setwarnings(False)
+	#reset
+	GPIO.setup(RESET_PIN, GPIO.OUT)
+
+	GPIO.output(RESET_PIN, 0)
+	time.sleep(0.2)
+	GPIO.output(RESET_PIN, 1)
+
 def find_hw():
 	rs = None
+	reset_port()
+	time.sleep(3)
 	for s in list_ports.comports(include_links=False):
-		with serial.Serial(s.device, baudrate=9600, timeout=1) as ser:
-			ser.write(b'pA\x0a')
-			cmd = ser.read(1)
-			if cmd == b'p':
-				if ser.read(1) == b'B':
-					rs = s.device
-					ser.read(1)
-					break
+		ser = serial.Serial(s.device, baudrate=9600, timeout=1)
+		ser.write(b'pA' + CHAR_EOT)
+		cmd = ser.read(1)
+		if cmd == b'p':
+			if ser.read(1) == b'B':
+				if ser.read(1) != CHAR_EOT:
+					protocol_error('no eot in reply of ping')
+				ser.read(1)
+				rs = ser
+				break
 	return rs
 
-def protocol_error():
-	raise Exception('protocol error')
+def protocol_error(descr):
+	raise Exception('protocol error:' + descr)
 
 def quaternion_from_euler(ai, aj, ak):
 	ai /= 2.0
@@ -83,22 +105,22 @@ def set_speed(ser, v1, v2):
 	ser.write(struct.pack('i', freq2))
 	ser.write(CHAR_EOT)
 	if ser.read(1) == CMD_MOVE:
-		print('V1', struct.unpack('i', ser.read(4))[0])
-		print('V2', struct.unpack('i', ser.read(4))[0])
+		node.get_logger().info('V1:{}'.format(struct.un3pack('i', ser.read(4))[0]))
+		node.get_logger().info('V2:{}'.format(struct.un3pack('i', ser.read(4))[0]))
 		if ser.read(1) != CHAR_EOT:
-			protocol_error()
+			protocol_error('no eot in reply of move')
 	else:
-		protocol_error()
+		protocol_error('no move command in reply')
 
 def steps(ser):
 	global steps1, steps2
 	ser.write(CMD_STEPS)
 	ser.write(CHAR_EOT)
-	if ser.read(1) == CMD_STEPS:
-		v1 = struct.unpack('q', ser.read(8))[0]
-		v2 = struct.unpack('q', ser.read(8))[0]
+	if ser.read() == CMD_STEPS:
+		v1,v2 = struct.unpack('qq', ser.read(16))[:2]
+#		node.get_logger().info('CNT1:{}, CNT2:{}'.format(v1, v2))
 		if ser.read(1) != CHAR_EOT:
-			protocol_error()
+			protocol_error('no eot in reply of steps')
 		dv1 = v1 - steps1
 		dv2 = v2 - steps2
 		steps1 = v1
@@ -107,12 +129,17 @@ def steps(ser):
 #		print('dS2', dv2)
 		rs = (v1, v2)
 	else:
-		protocol_error()
+		protocol_error('no step command in reply')
 	return rs
 
 def reset_steps(ser):
 	ser.write(CMD_RESET)
 	ser.write(CHAR_EOT)
+	if ser.read() == CMD_RESET:
+		if ser.read(1) != CHAR_EOT:
+			protocol_error('no eot in reply of reset')
+	else:
+		protocol_error('no reset command in reply')
 	steps1 = 0
 	steps2 = 0
 
@@ -241,17 +268,20 @@ class TheNode(Node):
 
 def main(args=None):
 
+	global node
 	rclpy.init(args=args)
 
 	if os.path.exists('vars.sh'):
 		global DEV
 		exec(open('vars.sh').read(), globals())
+		ser = serial.Serial(DEV, 115200, timeout=1)
 	else:
-		DEV = find_hw()
+		ser = find_hw()
+		DEV = ser.port
 
 	exit = False
-	with serial.Serial(DEV, 115200, timeout=0.5) as ser:
 
+	try:
 		node = TheNode(ser)
 		node.get_logger().info('Dev: {}'.format(DEV))
 
@@ -267,6 +297,7 @@ def main(args=None):
 		# when the garbage collector destroys the node object)
 		node.destroy_node()
 		rclpy.shutdown()
+	finally:
 		ser.close()
 
 if __name__ == '__main__':
