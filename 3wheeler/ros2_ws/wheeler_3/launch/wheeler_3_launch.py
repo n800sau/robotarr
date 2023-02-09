@@ -28,13 +28,14 @@ def generate_launch_description():
 #				'params': param_dir}.items(),
 #		),
 
-		Node(
-			package='tf2_ros',
-			executable='static_transform_publisher',
-			output='screen',
-			name='odom_map',
-			arguments=["--x", "0", "--y", "0", "--z", "0", '--yaw', '0', '--pitch', '0', '--roll', '0',  "--frame-id", "map", "--child-frame-id", "odom"]
-		),
+# map with odom is for slam
+#		Node(
+#			package='tf2_ros',
+#			executable='static_transform_publisher',
+#			output='screen',
+#			name='odom_map_drift',
+#			arguments=["--x", "0", "--y", "0", "--z", "0", '--yaw', '0', '--pitch', '0', '--roll', '0',  "--frame-id", "map", "--child-frame-id", "odom"]
+#		),
 		Node(
 			package='tf2_ros',
 			executable='static_transform_publisher',
@@ -45,7 +46,7 @@ def generate_launch_description():
 		Node(
 			package='tf2_ros',
 			executable='static_transform_publisher',
-			name='link_base',
+			name='base_laser',
 			arguments = ['--x', '0', '--y', '0', '--z', '0.1', '--yaw', '0', '--pitch', '0', '--roll', '0', '--frame-id', 'base-link', '--child-frame-id', 'laser']
 		),
 		Node(
@@ -57,5 +58,8 @@ def generate_launch_description():
 			package='wheeler_3',
 			executable='wheeler_streamer_3',
 			name='wheeler_streamer_3'
+		),
+		IncludeLaunchDescription(
+			PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('sllidar_ros2')), '/launch/sllidar_launch.py'])
 		),
 	])
