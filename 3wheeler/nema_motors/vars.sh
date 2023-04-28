@@ -1,6 +1,7 @@
 #DEV=/dev/serial/by-id/usb-1a86_USB2.0-Serial-if00-port0
-#DEV=/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+#DEV='/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0'
+DEV='/dev/serial/by-id/usb-STMicroelectronics_BLUEPILL_F103C8_CDC_in_FS_Mode_8D7718A45449-if00'
 #DEV=/dev/serial/by-id/usb-n800s_UProgLink-if02
 #DEV=/dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0
 #DEV=/dev/virtualcom0
-DEV='/dev/ttyAMA0'
+#DEV='/dev/ttyAMA0'

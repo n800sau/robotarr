@@ -14,7 +14,7 @@ const byte CMD_RESET = 'r';
 void onError(uint8_t errorNum);
 
 // Create instance. Pass Serial instance. Define command-id-range within Simple Serial Protocol is listening (here: a - z)
-SimpleSerialProtocol ssp(Serial, BAUDRATE, CHARACTER_TIMEOUT, onError, 'a', 'z'); // ASCII: 'a' - 'z' (26 byes of RAM is reserved)
+SimpleSerialProtocol ssp(Serial, STREAM_TYPE_HARDWARESERIAL, BAUDRATE, CHARACTER_TIMEOUT, onError, 'a', 'z'); // ASCII: 'a' - 'z' (26 byes of RAM is reserved)
 
 const int stepper1_enable_pin = PB7;
 const int stepper1_dir_pin = PA12;
