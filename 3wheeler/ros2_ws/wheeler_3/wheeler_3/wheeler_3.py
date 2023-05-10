@@ -13,7 +13,7 @@ import tf2_ros
 import numpy as np
 
 import time
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 
 CHAR_EOT = b'\x0a'
 CMD_MOVE = b'm'
@@ -34,19 +34,20 @@ steps1 = 0
 steps2 = 0
 
 def reset_port():
+	pass
 
-	RESET_PIN = 12
+#	RESET_PIN = 12
 
 	# or, for pin numbering, choose BOARD
-	GPIO.setmode(GPIO.BOARD)
+#	GPIO.setmode(GPIO.BOARD)
 
-	GPIO.setwarnings(False)
+#	GPIO.setwarnings(False)
 	#reset
-	GPIO.setup(RESET_PIN, GPIO.OUT)
+#	GPIO.setup(RESET_PIN, GPIO.OUT)
 
-	GPIO.output(RESET_PIN, 0)
-	time.sleep(0.2)
-	GPIO.output(RESET_PIN, 1)
+#	GPIO.output(RESET_PIN, 0)
+#	time.sleep(0.2)
+#	GPIO.output(RESET_PIN, 1)
 
 def find_hw():
 	rs = None
@@ -149,9 +150,15 @@ def m2steps(mval):
 
 class TheNode(Node):
 
-	def __init__(self, ser):
+	def __init__(self):
 		super().__init__('wheeler_3')
-		self.ser = ser
+		self.declare_parameter('serial_port', '')
+		serial_port = self.get_parameter('serial_port').get_parameter_value().string_value
+		if not serial_port:
+			serial_port = find_hw()
+		self.get_logger().info('SERIAL PORT %s!!!' % serial_port)
+		self.ser = serial.Serial(serial_port, 115200, timeout=1)
+		reset_steps(self.ser)
 		self.prev_time = self.get_clock().now()
 		self.theta = 0.
 		self.prev_counter1 = 0
@@ -184,7 +191,8 @@ class TheNode(Node):
 		self.get_logger().info('vel: l %s, r %s' % (linear_left, linear_right))
 		set_speed(self.ser, linear_left, linear_right)
 
-	def counts2tf(self, counter1, counter2):
+	def counts2tf(self):
+		counter1,counter2 = steps(self.ser)
 		curr_time = self.get_clock().now()
 		dt = curr_time - self.prev_time
 		dt_sec = dt.nanoseconds / 1e9
@@ -271,25 +279,13 @@ def main(args=None):
 	global node
 	rclpy.init(args=args)
 
-	if os.path.exists('vars.sh'):
-		global DEV
-		exec(open('vars.sh').read(), globals())
-		ser = serial.Serial(DEV, 115200, timeout=1)
-	else:
-		ser = find_hw()
-		DEV = ser.port
-
 	exit = False
 
 	try:
-		node = TheNode(ser)
-		node.get_logger().info('Dev: {}'.format(DEV))
-
-		reset_steps(ser)
+		node = TheNode()
 		while not exit:
 			rclpy.spin_once(node, timeout_sec=0.1)
-			counter1,counter2 = steps(ser)
-			node.counts2tf(counter1, counter2)
+			node.counts2tf()
 #			print(time.strftime('%M:%S'))
 
 		# Destroy the node explicitly
@@ -298,7 +294,7 @@ def main(args=None):
 		node.destroy_node()
 		rclpy.shutdown()
 	finally:
-		ser.close()
+		node.ser.close()
 
 if __name__ == '__main__':
 	main()
