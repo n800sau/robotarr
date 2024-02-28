@@ -75,6 +75,7 @@ HardwareTimer *t_begin(PinName pin, uint32_t perc, callback_function_t periodCal
 void setup()
 {
 
+	log_line("setup\n");
 //	const PinName p1 = PB_1;
 //	const PinName p2 = PB_8;
 
@@ -119,6 +120,7 @@ void setup()
 
 void set_dir(bool fwd1, bool fwd2)
 {
+	log_printf("set_dir: %d:%d\n", fwd1, fwd2);
 	last_fwd1 = fwd1;
 	last_fwd2 = fwd2;
 	digitalWrite(stepper1_dir_pin, fwd1 ? HIGH : LOW);
@@ -170,8 +172,51 @@ void change_freq(uint32_t from, uint32_t to)
 	last_freq_t2 = to;
 }
 
+void send_command(int command, void *message)
+{
+	asm("mov r0, %[cmd];"
+		"mov r1, %[msg];"
+		"bkpt #0xAB"
+		:
+		: [cmd] "r" (command), [msg] "r" (message)
+		: "r0", "r1", "memory"
+	);
+}
+
+//void put_char(char c)
+//{
+//	asm (
+//	"mov r0, #0x03\n"   /* SYS_WRITEC */
+//	"mov r1, %[msg]\n"
+//	"bkpt #0xAB\n"
+//	:
+//	: [msg] "r" (&c)
+//	: "r0", "r1"
+//	);
+//}
+
+int log_printf(const char *fmt, ...)
+{
+	static char buffer[100];
+	va_list args;
+	va_start(args, fmt);
+	int rc = vsnprintf(buffer, sizeof(buffer), fmt, args);
+	va_end(args);
+	log_line(buffer);
+	return rc;
+}
+
+void log_line(const char *s)
+{
+	uint32_t m[] = { 2/*stderr*/, (uint32_t)s, strlen(s) };
+	send_command(0x05/* some interrupt ID */, m);
+}
+
 void loop()
 {
+
+
+
 /*	change_freq(freq_min, freq_max);
 	delay(2000);
 	t1->pause();
@@ -209,11 +254,13 @@ void onMoveCmd()
 	set_dir(s1val >= 0, s2val >= 0);
 	if(s1val != 0)
 	{
+		log_printf("move 1: %d\n", abs(s1val));
 		t1->setOverflow(abs(s1val), HERTZ_FORMAT);
 		t1->resume();
 	}
 	if(s2val != 0)
 	{
+		log_printf("move 2: %d\n", abs(s2val));
 		t2->setOverflow(abs(s2val), HERTZ_FORMAT);
 		t2->resume();
 	}
