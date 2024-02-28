@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 from serial import Serial
 import time, struct
 
@@ -45,6 +46,11 @@ time.sleep(2)
 msg = b's' + BYTE_EOT
 print('Send:', msg)
 ser.write(msg)
+
+# explicite cut of protocol
+#ser.read(1+1)
+#sys.exit()
+
 rep = ser.read(1+16+1)
 print('Got:', rep, len(rep[1:]))
 v1,v2 = struct.unpack('qq', rep[1:-1])
