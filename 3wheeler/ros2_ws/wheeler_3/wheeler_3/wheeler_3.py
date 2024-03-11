@@ -20,6 +20,8 @@ CMD_MOVE = b'm'
 CMD_STEPS = b's'
 CMD_RESET = b'r'
 
+BYTE_LOG = b'#'
+
 # distance between centers of wheels
 WHEEL_BASE = 0.176
 # full turn distance
@@ -32,6 +34,21 @@ WDIAM = 0.06
 
 steps1 = 0
 steps2 = 0
+
+def ser_read(ser, size):
+	global node
+	m = ser.read(1)
+	if m == BYTE_LOG:
+		m = ser.read_until(BYTE_LOG)
+		node.get_logger().info(m[:-1].decode())
+#		print('LOG:', m[:-1].decode())
+		m = ser_read(ser, size)
+	elif size > 1:
+		m += ser.read(size-1)
+#	print('size:', len(m))
+#	node.get_logger().info('@@@@@@@@@@@@@' + m.decode())
+	return m
+
 
 def reset_port():
 	pass
@@ -56,12 +73,12 @@ def find_hw():
 	for s in list_ports.comports(include_links=False):
 		ser = serial.Serial(s.device, baudrate=9600, timeout=1)
 		ser.write(b'pA' + CHAR_EOT)
-		cmd = ser.read(1)
+		cmd = ser_read(ser, 1)
 		if cmd == b'p':
-			if ser.read(1) == b'B':
-				if ser.read(1) != CHAR_EOT:
+			if ser_read(ser, 1) == b'B':
+				if ser_read(ser, 1) != CHAR_EOT:
 					protocol_error('no eot in reply of ping')
-				ser.read(1)
+				ser_read(ser, 1)
 				rs = ser
 				break
 	return rs
@@ -105,10 +122,10 @@ def set_speed(ser, v1, v2):
 	ser.write(struct.pack('i', freq1))
 	ser.write(struct.pack('i', freq2))
 	ser.write(CHAR_EOT)
-	if ser.read(1) == CMD_MOVE:
-		node.get_logger().info('V1:{}'.format(struct.un3pack('i', ser.read(4))[0]))
-		node.get_logger().info('V2:{}'.format(struct.un3pack('i', ser.read(4))[0]))
-		if ser.read(1) != CHAR_EOT:
+	if ser_read(ser, 1) == CMD_MOVE:
+		node.get_logger().info('V1:{}'.format(struct.unpack('i', ser_read(ser, 4))[0]))
+		node.get_logger().info('V2:{}'.format(struct.unpack('i', ser_read(ser, 4))[0]))
+		if ser_read(ser, 1) != CHAR_EOT:
 			protocol_error('no eot in reply of move')
 	else:
 		protocol_error('no move command in reply')
@@ -117,10 +134,10 @@ def steps(ser):
 	global steps1, steps2
 	ser.write(CMD_STEPS)
 	ser.write(CHAR_EOT)
-	if ser.read() == CMD_STEPS:
-		v1,v2 = struct.unpack('qq', ser.read(16))[:2]
+	if ser_read(ser, 1) == CMD_STEPS:
+		v1,v2 = struct.unpack('qq', ser_read(ser, 16))[:2]
 #		node.get_logger().info('CNT1:{}, CNT2:{}'.format(v1, v2))
-		if ser.read(1) != CHAR_EOT:
+		if ser_read(ser, 1) != CHAR_EOT:
 			protocol_error('no eot in reply of steps')
 		dv1 = v1 - steps1
 		dv2 = v2 - steps2
@@ -136,8 +153,8 @@ def steps(ser):
 def reset_steps(ser):
 	ser.write(CMD_RESET)
 	ser.write(CHAR_EOT)
-	if ser.read() == CMD_RESET:
-		if ser.read(1) != CHAR_EOT:
+	if ser_read(ser, 1) == CMD_RESET:
+		if ser_read(ser, 1) != CHAR_EOT:
 			protocol_error('no eot in reply of reset')
 	else:
 		protocol_error('no reset command in reply')
@@ -158,6 +175,8 @@ class TheNode(Node):
 			serial_port = find_hw()
 		self.get_logger().info('SERIAL PORT %s!!!' % serial_port)
 		self.ser = serial.Serial(serial_port, 115200, timeout=1)
+
+	def setup(self):
 		reset_steps(self.ser)
 		self.prev_time = self.get_clock().now()
 		self.theta = 0.
@@ -281,8 +300,9 @@ def main(args=None):
 
 	exit = False
 
+	node = TheNode()
 	try:
-		node = TheNode()
+		node.setup()
 		while not exit:
 			rclpy.spin_once(node, timeout_sec=0.1)
 			node.counts2tf()

@@ -54,7 +54,8 @@ def generate_launch_description():
 			executable='wheeler_3',
 			name='wheeler_3',
 			parameters=[{
-				'serial_port': '/dev/serial/by-id/usb-STMicroelectronics_BLUEPILL_F103C8_CDC_in_FS_Mode_8D8351A25350-if00',
+#				'serial_port': '/dev/serial/by-id/usb-STMicroelectronics_BLUEPILL_F103C8_CDC_in_FS_Mode_8D8351A25350-if00',
+				'serial_port': '/dev/serial/by-id/usb-STMicroelectronics_BLUEPILL_F103C8_CDC_in_FS_Mode_6D87477B5656-if00',
 			}]
 		),
 #		Node(
