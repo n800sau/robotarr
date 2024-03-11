@@ -13,7 +13,7 @@ source vars.sh
 #platformio run -e stm32 -t upload --upload-port $DEV &>upload.log
 #platformio run -e stm32 -t upload &>upload.log
 
-./build.sh && \
+platformio run -e stm32 &> build.log && \
 gdb-multiarch -q --command=upload.gdb --args ".pio/build/stm32/firmware.elf"
 
 #&& \
