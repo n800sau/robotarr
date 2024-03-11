@@ -17,7 +17,7 @@ void onError(uint8_t errorNum);
 SimpleSerialProtocol ssp(Serial, STREAM_TYPE_HARDWARESERIAL, BAUDRATE, CHARACTER_TIMEOUT, onError, 'a', 'z'); // ASCII: 'a' - 'z' (26 byes of RAM is reserved)
 
 const int stepper1_enable_pin = PB7;
-const int stepper1_dir_pin = PA12;
+const int stepper1_dir_pin = PA11;
 //const int stepper1_step_pin = PB1; //PA15;
 
 PinName stepper1_step_pin = PB_1;
@@ -30,13 +30,13 @@ PinName stepper2_step_pin = PB_8;
 
 // 50 - too much
 const uint32_t perc = 1;
+HardwareTimer *t1;
+HardwareTimer *t2;
+
 
 // 20000 too fast
 const uint32_t freq_max = 4000;
 const uint32_t freq_min = 800;
-
-HardwareTimer *t1;
-HardwareTimer *t2;
 
 uint32_t last_freq_t1 = 0;
 uint32_t last_freq_t2 = 0;
@@ -75,7 +75,7 @@ HardwareTimer *t_begin(PinName pin, uint32_t perc, callback_function_t periodCal
 void setup()
 {
 
-	log_line("setup\n");
+	log_line("setup");
 //	const PinName p1 = PB_1;
 //	const PinName p2 = PB_8;
 
@@ -112,7 +112,7 @@ void setup()
 	ssp.registerCommand(CMD_RESET, onResetCmd);
 	ssp.registerCommand(CMD_PING, onPingCmd);
 
-	set_dir(true, true);
+//	set_dir(true, true);
 
 	t1 = t_begin(stepper1_step_pin, perc, periodCallback1);
 	t2 = t_begin(stepper2_step_pin, perc, periodCallback2);
@@ -172,29 +172,6 @@ void change_freq(uint32_t from, uint32_t to)
 	last_freq_t2 = to;
 }
 
-void send_command(int command, void *message)
-{
-	asm("mov r0, %[cmd];"
-		"mov r1, %[msg];"
-		"bkpt #0xAB"
-		:
-		: [cmd] "r" (command), [msg] "r" (message)
-		: "r0", "r1", "memory"
-	);
-}
-
-//void put_char(char c)
-//{
-//	asm (
-//	"mov r0, #0x03\n"   /* SYS_WRITEC */
-//	"mov r1, %[msg]\n"
-//	"bkpt #0xAB\n"
-//	:
-//	: [msg] "r" (&c)
-//	: "r0", "r1"
-//	);
-//}
-
 int log_printf(const char *fmt, ...)
 {
 	static char buffer[100];
@@ -208,8 +185,9 @@ int log_printf(const char *fmt, ...)
 
 void log_line(const char *s)
 {
-	uint32_t m[] = { 2/*stderr*/, (uint32_t)s, strlen(s) };
-	send_command(0x05/* some interrupt ID */, m);
+	Serial.print("#");
+	Serial.print(s);
+	Serial.print("#");
 }
 
 void loop()
@@ -229,7 +207,8 @@ void loop()
 	t2->pause();
 	delay(4000);
 	set_dir(true, true);
-*/	ssp.loop();
+*/
+	ssp.loop();
 }
 
 // callbacks implementation
